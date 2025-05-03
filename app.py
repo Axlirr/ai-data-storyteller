@@ -6,15 +6,8 @@ import plotly.express as px
 from gtts import gTTS
 import tempfile
 import requests
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from dotenv import load_dotenv
-import google.auth
-import google.auth.transport.requests
-
-# --- Load environment variables ---
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
 
 # --- Streamlit UI Setup ---
 st.set_page_config(page_title="AI Data Storyteller", layout="wide")
@@ -51,101 +44,66 @@ if data is not None:
 
     # --- Visualizations ---
     st.subheader("Visualizations")
-    numeric_cols = data.select_dtypes(include=np.number).columns.tolist()
-    if numeric_cols:
-        col1, col2 = st.columns(2)
-        with col1:
-            x_axis = st.selectbox("X-axis", numeric_cols, key="x")
-        with col2:
-            y_axis = st.selectbox("Y-axis", numeric_cols, key="y")
-        if x_axis and y_axis:
-            fig = px.scatter(data, x=x_axis, y=y_axis, title=f"Scatter: {x_axis} vs {y_axis}")
-            st.plotly_chart(fig)
-    else:
-        st.info("No numeric columns for plotting.")
+    numeric_cols = data.select_dtypes(include=[np.number]).columns
+    if len(numeric_cols) > 0:
+        st.subheader("Correlation Heatmap")
+        corr_matrix = data[numeric_cols].corr()
+        fig = px.imshow(corr_matrix, text_auto=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-    # --- AI Insights (Gemini) ---
-    st.subheader("AI-Generated Insights")
-
+    # --- AI Insights ---
     def get_gemini_insights(data):
-        if not GEMINI_API_KEY:
-            st.error("Please set your Gemini API key as an environment variable: GEMINI_API_KEY")
-            return
-
-        # Prepare data summary for Gemini
-        data_summary = f"""
-        Dataset Analysis:
-        {data.describe(include='all').to_string()}
-
-        Missing Values:
-        {data.isnull().sum().to_string()}
-
-        Correlations:
-        {data.corr().to_string()}
-        """
-
-        # Prepare Gemini API request
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": f"""
-                            Analyze this dataset and provide insights:
-                            {data_summary}
-
-                            Please provide:
-                            1. Key patterns and trends
-                            2. Important correlations
-                            3. Potential insights
-                            4. Recommendations for further analysis
-                            """
-                        }
-                    ]
-                }
-            ],
-            "generation_config": {
-                "temperature": 0.7,
-                "top_p": 0.8,
-                "top_k": 40,
-                "candidate_count": 1
-            }
-        }
-
         try:
-            # Get credentials
-            credentials, _ = google.auth.default()
-            
-            # Create a session with proper headers
-            session = requests.Session()
-            auth_req = google.auth.transport.requests.Request()
-            credentials.refresh(auth_req)
-            
-            session.headers.update({
-                "Authorization": f"Bearer {credentials.token}",
-                "Content-Type": "application/json"
-            })
-
-            # Make the Gemini API request
-            response = session.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
-                json=payload
+            # Load credentials
+            credentials = service_account.Credentials.from_service_account_file(
+                os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
             )
-
+            
+            # Refresh token if needed
+            if not credentials.valid:
+                credentials.refresh(Request())
+            
+            # Get access token
+            access_token = credentials.token
+            
+            # Prepare the data for Gemini
+            data_summary = "\n".join([
+                f"{col}: {data[col].describe().to_string()}" for col in data.columns
+            ])
+            
+            # Generate insights using Gemini
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            
+            prompt = f"""
+            Analyze this dataset and provide insights:
+            {data_summary}
+            
+            Please provide:
+            1. Key patterns and trends
+            2. Any correlations between variables
+            3. Potential areas for further investigation
+            4. Any anomalies or outliers
+            """
+            
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            
+            response = requests.post(url, headers=headers, json=payload)
+            
             if response.status_code == 200:
-                try:
-                    result = response.json()
-                    if 'candidates' in result and len(result['candidates']) > 0:
-                        gemini_text = result['candidates'][0]['content']['parts'][0]['text']
-                        st.success("✅ AI Insights generated successfully!")
-                        st.markdown(gemini_text)
-                    else:
-                        st.error("No content generated by Gemini API")
-                except Exception as e:
-                    st.error(f"Error processing Gemini response: {str(e)}")
+                result = response.json()
+                if "candidates" in result and len(result["candidates"]) > 0:
+                    insights = result["candidates"][0]["content"]["parts"][0]["text"]
+                    st.success("AI Insights:")
+                    st.write(insights)
             else:
                 try:
-                    error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+                    error_msg = response.json().get("error", {}).get("message", "Unknown error")
                     st.error(f"Gemini API error ({response.status_code}): {error_msg}")
                 except:
                     st.error(f"Gemini API error ({response.status_code}): {response.text}")

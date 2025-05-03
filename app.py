@@ -6,15 +6,14 @@ import plotly.express as px
 from gtts import gTTS
 import tempfile
 import requests
-from google.oauth2 import service_account
-from google.auth.transport.requests import Request
+import openai
 
 # --- Streamlit UI Setup ---
 st.set_page_config(page_title="AI Data Storyteller", layout="wide")
 st.title("AI Data Storyteller")
 
 st.markdown("""
-Upload a CSV or provide a dataset URL. The app will analyze your data, generate insights using Gemini LLM, create visualizations, and narrate a report!
+Upload a CSV or provide a dataset URL. The app will analyze your data, generate insights using OpenAI's GPT-3.5 Turbo, create visualizations, and narrate a report!
 """)
 
 # --- Data Upload ---
@@ -52,31 +51,19 @@ if data is not None:
         st.plotly_chart(fig, use_container_width=True)
 
     # --- AI Insights ---
-    def get_gemini_insights(data):
+    def get_openai_insights(data):
         try:
-            # Load credentials
-            credentials = service_account.Credentials.from_service_account_file(
-                os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-            )
-            
-            # Refresh token if needed
-            if not credentials.valid:
-                credentials.refresh(Request())
-            
-            # Get access token
-            access_token = credentials.token
-            
-            # Prepare the data for Gemini
+            # Prepare the data for OpenAI
             data_summary = "\n".join([
                 f"{col}: {data[col].describe().to_string()}" for col in data.columns
             ])
             
-            # Generate insights using Gemini
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            }
+            # Generate insights using OpenAI
+            openai.api_key = os.getenv("OPENAI_API_KEY")
+            
+            if not openai.api_key:
+                st.error("Please set your OpenAI API key as an environment variable: OPENAI_API_KEY")
+                return
             
             prompt = f"""
             Analyze this dataset and provide insights:
@@ -89,29 +76,23 @@ if data is not None:
             4. Any anomalies or outliers
             """
             
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}]
-            }
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a data analyst AI assistant."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
             
-            response = requests.post(url, headers=headers, json=payload)
+            insights = response.choices[0].message.content
+            st.success("AI Insights:")
+            st.write(insights)
             
-            if response.status_code == 200:
-                result = response.json()
-                if "candidates" in result and len(result["candidates"]) > 0:
-                    insights = result["candidates"][0]["content"]["parts"][0]["text"]
-                    st.success("AI Insights:")
-                    st.write(insights)
-            else:
-                try:
-                    error_msg = response.json().get("error", {}).get("message", "Unknown error")
-                    st.error(f"Gemini API error ({response.status_code}): {error_msg}")
-                except:
-                    st.error(f"Gemini API error ({response.status_code}): {response.text}")
         except Exception as e:
-            st.error(f"Failed to authenticate with Gemini API: {str(e)}")
+            st.error(f"Failed to generate insights: {str(e)}")
 
-    if st.button("Generate Insights with Gemini"):
-        get_gemini_insights(data)
+    if st.button("Generate Insights with OpenAI"):
+        get_openai_insights(data)
 
     # --- Narrate Report ---
     st.subheader("Narrate Report (TTS)")

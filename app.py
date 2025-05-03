@@ -10,10 +10,11 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from dotenv import load_dotenv
 
-# Load environment variables
+# --- Load environment variables ---
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# --- Streamlit UI Setup ---
 st.set_page_config(page_title="AI Data Storyteller", layout="wide")
 st.title("AI Data Storyteller")
 
@@ -34,6 +35,7 @@ elif dataset_url:
     except Exception as e:
         st.error(f"Failed to load data from URL: {e}")
 
+# --- If data is loaded ---
 if data is not None:
     st.subheader("Data Preview")
     st.dataframe(data.head())
@@ -62,21 +64,37 @@ if data is not None:
 
     # --- AI Insights (Gemini) ---
     st.subheader("AI-Generated Insights")
+
     if st.button("Generate Insights with Gemini"):
-        prompt = f"""
-        You are an expert data analyst. Analyze the following dataset summary and statistics, and provide key insights, trends, and possible recommendations in plain English.\n\nSummary:\n{data.describe(include='all').to_string()}\n\nMissing Values:\n{data.isnull().sum().to_string()}\n"""
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {GEMINI_API_KEY}"}
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-        response = requests.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
-            headers=headers,
-            json=payload
-        )
-        if response.status_code == 200:
-            gemini_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-            st.success(gemini_text)
+        if not GEMINI_API_KEY:
+            st.error("Gemini API key is missing. Please check your .env file.")
         else:
-            st.error(f"Gemini API error: {response.text}")
+            prompt = f"""
+            You are an expert data analyst. Analyze the following dataset summary and statistics, and provide key insights, trends, and possible recommendations in plain English.
+
+            Summary:
+            {data.describe(include='all').to_string()}
+
+            Missing Values:
+            {data.isnull().sum().to_string()}
+            """
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {GEMINI_API_KEY}"
+            }
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            response = requests.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+                headers=headers,
+                json=payload
+            )
+
+            if response.status_code == 200:
+                gemini_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                st.success("✅ AI Insights generated successfully!")
+                st.markdown(gemini_text)
+            else:
+                st.error(f"Gemini API error ({response.status_code}): {response.text}")
 
     # --- Narrate Report ---
     st.subheader("Narrate Report (TTS)")
@@ -107,3 +125,4 @@ if data is not None:
                 st.download_button("Download PDF", pdf_file, file_name="report.pdf")
 else:
     st.info("Please upload a CSV or provide a dataset URL to get started.")
+

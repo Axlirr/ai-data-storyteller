@@ -34,9 +34,9 @@ A unique AI-powered web app that analyzes datasets, generates insights using Gem
    4. Create credentials (OAuth 2.0 Client IDs)
    5. Download the credentials JSON file
    6. Place the JSON file in your project directory
-   7. Set the environment variable:
+   7. Set the environment variable (for Windows):
       ```bash
-      export GOOGLE_APPLICATION_CREDENTIALS="path/to/your/credentials.json"
+      set GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your\credentials.json"
       ```
 
 4. Run the application:

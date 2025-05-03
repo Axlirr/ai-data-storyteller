@@ -9,6 +9,10 @@ import requests
 import openai
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # --- Streamlit UI Setup ---
 st.set_page_config(page_title="AI Data Storyteller", layout="wide")
@@ -60,12 +64,15 @@ if data is not None:
                 f"{col}: {data[col].describe().to_string()}" for col in data.columns
             ])
             
-            # Generate insights using OpenAI
-            openai.api_key = os.getenv("OPENAI_API_KEY")
+            # Get API key from environment variable
+            api_key = os.getenv("OPENAI_API_KEY")
             
-            if not openai.api_key:
+            if not api_key:
                 st.error("Please set your OpenAI API key as an environment variable: OPENAI_API_KEY")
                 return
+            
+            # Initialize OpenAI with API key
+            openai.api_key = api_key
             
             prompt = f"""
             Analyze this dataset and provide insights:

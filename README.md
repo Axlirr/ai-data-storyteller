@@ -27,18 +27,10 @@ A unique AI-powered web app that analyzes datasets, generates insights using Gem
    pip install -r requirements.txt
    ```
 
-3. Set up Google Cloud credentials:
-   - Go to https://console.cloud.google.com/
-   - Create a new project or select an existing one
-   - Enable the Generative AI API
-   - Create credentials (OAuth 2.0 Client IDs)
-   - Download the credentials JSON file
-   - Place the JSON file in your project directory
-   - Rename the `.env.example` file to `.env`
-   - Set the path to your credentials file in the `.env` file:
-     ```
-     SERVICE_ACCOUNT_FILE="path/to/your/service-account-file.json"
-     ```
+3. Set your Gemini API key as an environment variable:
+   ```bash
+   export GEMINI_API_KEY="your_gemini_api_key"
+   ```
 
 4. Run the app:
    ```bash
@@ -50,9 +42,9 @@ A unique AI-powered web app that analyzes datasets, generates insights using Gem
    ```bash
    docker build -t ai-data-storyteller .
    ```
-2. Run the container (pass your service account file path):
+2. Run the container (pass your Gemini API key):
    ```bash
-   docker run -p 8501:8501 -e SERVICE_ACCOUNT_FILE=/path/to/your/service-account-file.json ai-data-storyteller
+   docker run -p 8501:8501 -e GEMINI_API_KEY=your_gemini_api_key ai-data-storyteller
    ```
 
 ## License

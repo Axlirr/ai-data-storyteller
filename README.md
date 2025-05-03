@@ -27,7 +27,7 @@ A unique AI-powered web app that analyzes datasets, generates insights using Gem
    ```
 3. Set your Gemini API key as an environment variable:
    ```bash
-   export GEMINI_API_KEY="AIzaSyBVHvqRT38MdYzAn6YFWSQRFtC_gYFe79s"
+   export GEMINI_API_KEY="your_gemini_api_key"
    ```
 4. Run the app:
    ```bash

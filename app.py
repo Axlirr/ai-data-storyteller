@@ -6,10 +6,10 @@ import plotly.express as px
 from gtts import gTTS
 import tempfile
 import requests
-import openai
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from dotenv import load_dotenv
+import openai
 
 # Load environment variables
 load_dotenv()
@@ -74,23 +74,26 @@ if data is not None:
             # Initialize OpenAI with API key
             openai.api_key = api_key
             
-            prompt = f"""
-            Analyze this dataset and provide insights:
-            {data_summary}
-            
-            Please provide:
-            1. Key patterns and trends
-            2. Any correlations between variables
-            3. Potential areas for further investigation
-            4. Any anomalies or outliers
-            """
+            # Create a chat completion
+            messages = [
+                {"role": "system", "content": "You are a data analyst AI assistant."},
+                {"role": "user", "content": f"""
+                Analyze this dataset and provide insights:
+                {data_summary}
+                
+                Please provide:
+                1. Key patterns and trends
+                2. Any correlations between variables
+                3. Potential areas for further investigation
+                4. Any anomalies or outliers
+                """}
+            ]
             
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a data analyst AI assistant."},
-                    {"role": "user", "content": prompt}
-                ]
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
             )
             
             insights = response.choices[0].message.content

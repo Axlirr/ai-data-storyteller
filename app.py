@@ -7,6 +7,8 @@ from gtts import gTTS
 import tempfile
 import requests
 import openai
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # --- Streamlit UI Setup ---
 st.set_page_config(page_title="AI Data Storyteller", layout="wide")

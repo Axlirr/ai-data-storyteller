@@ -9,7 +9,7 @@ import requests
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from dotenv import load_dotenv
-from google.oauth2 import service_account
+import google.auth
 import google.auth.transport.requests
 
 # --- Load environment variables ---
@@ -113,10 +113,16 @@ if data is not None:
         }
 
         try:
-            # Create a session to persist headers
+            # Get credentials
+            credentials, _ = google.auth.default()
+            
+            # Create a session with proper headers
             session = requests.Session()
+            auth_req = google.auth.transport.requests.Request()
+            credentials.refresh(auth_req)
+            
             session.headers.update({
-                "Authorization": f"Bearer {GEMINI_API_KEY}",
+                "Authorization": f"Bearer {credentials.token}",
                 "Content-Type": "application/json"
             })
 
@@ -143,10 +149,8 @@ if data is not None:
                     st.error(f"Gemini API error ({response.status_code}): {error_msg}")
                 except:
                     st.error(f"Gemini API error ({response.status_code}): {response.text}")
-        except requests.exceptions.RequestException as e:
-            st.error(f"Failed to connect to Gemini API: {str(e)}")
         except Exception as e:
-            st.error(f"An unexpected error occurred: {str(e)}")
+            st.error(f"Failed to authenticate with Gemini API: {str(e)}")
 
     if st.button("Generate Insights with Gemini"):
         get_gemini_insights(data)

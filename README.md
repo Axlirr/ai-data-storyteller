@@ -34,8 +34,15 @@ A unique AI-powered web app that analyzes datasets, generates insights using Gem
    streamlit run app.py
    ```
 
-## Deployment
-- Docker and cloud deployment instructions coming soon.
+## Docker Deployment
+1. Build the Docker image:
+   ```bash
+   docker build -t ai-data-storyteller .
+   ```
+2. Run the container (pass your Gemini API key):
+   ```bash
+   docker run -p 8501:8501 -e GEMINI_API_KEY=your_gemini_api_key ai-data-storyteller
+   ```
 
 ## License
 MIT
